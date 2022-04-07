@@ -4,7 +4,7 @@
 # include <string.h>
 
 # define ARG_ERR "Error: argument\n"
-# define COR_ERR "Error: operation file corrupted\n"
+# define COR_ERR "Error: Operation file corrupted\n"
 
 FILE 	*file;
 char 	**map;
@@ -34,14 +34,24 @@ int	ft_strlen(char *str)
 
 int	send_error(char *str)
 {
+	int i;
+
+	i = 0;
 	write(1, str, ft_strlen(str));
+	while (map && map[i] && i < height)
+	{
+		free(map[i]);
+		i++;
+	}
+	if (map)
+		free(map);
 	return (1);
 }
 
 int	is_background_OK(void)
 {
-	if (width < 0 || height < 0 
-		|| width >= 300 || height >= 300)
+	if (width <= 0 || height <= 0 
+		|| width > 300 || height > 300)
 		return (0);
 	return (1);
 }
@@ -50,7 +60,7 @@ int	is_foreground_OK(void)
 {
 	if (type != 'r' && type != 'R')
 		return (0);
-	if (x_corner < 0 || y_corner < 0)
+	if (r_height <= 0 || r_width <= 0)
 		return (0);
 	return (1);
 }
@@ -77,6 +87,26 @@ int     fill_background(void)
 
 // type x_corner y_corner r_width r_height foreground;
 //  r     10        10       3       3        O
+/*
+if ( (x == x_corner) && (y >= y_corner && y <= y_corner + r_height))
+	map[y][x] = foreground;
+if ( (y == y_corner) && (x >= x_corner && x <= x_corner + r_width))
+	map[y][x] = foreground;
+if ( (x == x_corner + r_width) && (y >= y_corner && y <= y_corner + r_height))
+	map[y][x] = foreground;
+if ( (y == y_corner + r_height) && (x >= x_corner && x <= x_corner + r_width))
+	map[y][x] = foreground;*/
+
+
+int calcul(float x, float y)
+{
+	if ((((x < x_corner) || (x_corner + r_width < x)) || (y < y_corner)) || (y_corner + r_height < y))
+		return (0);
+	if (((x - x_corner < 1.00000000) || ((x_corner + r_width) - x < 1.00000000)) ||
+		((y - y_corner < 1.00000000 || ((y_corner + r_height) - y < 1.00000000))))
+		return (2); // Border
+	return (1);		// Inside
+}
 
 int	fill_foreground(void)
 {
@@ -89,22 +119,8 @@ int	fill_foreground(void)
 		x = 0;
 		while (x < width)
 		{
-			if (type == 'R')
-			{
-				if ( (x >= x_corner && x <= x_corner + r_width) && (y >= y_corner && y <= y_corner + r_height))
-					map[y][x] = foreground;
-			}
-			if (type == 'r')
-			{
-				if ( (x == x_corner) && (y >= y_corner && y <= y_corner + r_height))
-					map[y][x] = foreground;
-				if ( (y == y_corner) && (x >= x_corner && x <= x_corner + r_width))
-					map[y][x] = foreground;
-				if ( (x == x_corner + r_width) && (y >= y_corner && y <= y_corner + r_height))
-					map[y][x] = foreground;
-				if ( (y == y_corner + r_height) && (x >= x_corner && x <= x_corner + r_width))
-					map[y][x] = foreground;
-			}
+			if ((calcul((float)x, (float)y) == 2) || ((calcul((float)x, (float)y) == 1 && type == 'R')))
+				map[y][x] = foreground;
 			x++;
 		}
 		y++;
@@ -116,20 +132,26 @@ int	fill_map(void)
 {
 	int ret;
 
-	ret = 0;
-	ret = fscanf(file, "%d %d %c\n", &width, &height, &background);
-	if (ret != 3 || ret == -1)
+	ret = fscanf(file, "%d %d %c\n",\
+		&width, &height, &background);
+	if (ret != 3)
 		return (0);
 	if (!is_background_OK())
 		return (0);
 	fill_background();
 	ret = 0;
-	while ((ret = fscanf(file, "%c %f %f %f %f %c\n", &type, &x_corner, &y_corner, &r_width, &r_height, &foreground) != -1))
+	ret = fscanf(file, "%c %f %f %f %f %c\n",\
+		&type, &x_corner, &y_corner, &r_width, &r_height, &foreground);
+	while (ret == 6)
 	{
 		if (!is_foreground_OK())
 			return (0);
 		fill_foreground();
+		ret = fscanf(file, "%c %f %f %f %f %c\n",\
+			&type, &x_corner, &y_corner, &r_width, &r_height, &foreground);
 	}
+	if (ret != -1)
+		return (0);
 	return (1);
 }
 
@@ -142,9 +164,10 @@ void	draw_map(void)
 	{
 		write(1, map[i], ft_strlen(map[i]));
 		write(1, "\n", 1);
+		free(map[i]);
 		i++;
 	}
-
+	free(map);
 }
 
 int	main(int argc, char **argv)

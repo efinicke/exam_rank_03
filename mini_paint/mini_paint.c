@@ -5,9 +5,9 @@
 # include <math.h>
 
 # define ARG_ERR "Error: argument\n"
-# define COR_ERR "Error: operation file corrupted\n"
+# define COR_ERR "Error: Operation file corrupted\n"
 
-FILE 	*file;
+
 char 	**map;
 
 int		width;
@@ -34,7 +34,17 @@ int	ft_strlen(char *str)
 
 int	send_error(char *str)
 {
+	int i;
+
+	i = 0;
 	write(1, str, ft_strlen(str));
+	while (map && map[i] && i < height)
+	{
+		free(map[i]);
+		i++;
+	}
+	if (map)
+		free(map);
 	return (1);
 }
 
@@ -67,7 +77,7 @@ int		is_foreground_OK(void)
 {
 	if (type != 'c' && type != 'C')
 		return (0);
-	if (radius <= 0.0)
+	if (radius <= 0.00000000)
 		return (0);
 	return (1);
 }
@@ -75,16 +85,19 @@ int		is_foreground_OK(void)
 int	calcul(int x, int y)
 {
 	float	dist = 0;
+	float	distance;
 
 	dist = sqrtf(((x - x_center) * (x - x_center) + (y - y_center) * (y - y_center)));
-	if (dist <= radius)
+	distance = dist - radius;
+	if (distance <= 0.00000000)
 	{
-		if ((radius - dist) < 1.0 && (radius - dist) > 0.0)
-			return (2);
-		return (1);
+		if (distance <= -1.00000000)
+			return (1);
+		return (2);
 	}
 	return (0);
 }
+
 
 int	fill_foreground(void)
 {
@@ -106,27 +119,6 @@ int	fill_foreground(void)
 	return (1);
 }
 
-int	fill_map(void)
-{
-	int ret;
-
-	ret = 0;
-	ret = fscanf(file, "%d %d %c\n", &width, &height, &background);
-	if (ret != 3 || ret == -1)
-		return (0);
-	if (!is_background_OK())
-		return (0);
-	fill_background();
-	ret = 0;
-	while ((ret = fscanf(file, "%c %f %f %f %c\n", &type, &x_center, &y_center, &radius, &foreground) != -1))
-	{
-		if (!is_foreground_OK())
-			return (0);
-		fill_foreground();
-	}
-	return (1);
-}
-
 void	draw_map(void)
 {
 	int i;
@@ -136,18 +128,44 @@ void	draw_map(void)
 	{
 		write(1, map[i], ft_strlen(map[i]));
 		write(1, "\n", 1);
+		free(map[i]);
 		i++;
 	}
+	free(map);
+}
 
+int	fill_map(FILE *file)
+{
+	int ret;
+
+	ret = fscanf(file, "%d %d %c\n", &width, &height, &background);
+	if (ret != 3)
+		return (0);
+	if (!is_background_OK())
+		return (0);
+	fill_background();
+	ret = fscanf(file, "%c %f %f %f %c\n", &type, &x_center, &y_center, &radius, &foreground);
+	while ((ret == 5))
+	{
+		if (!is_foreground_OK())
+			return (0);
+		fill_foreground();
+		ret = fscanf(file, "%c %f %f %f %c\n", &type, &x_center, &y_center, &radius, &foreground);
+	}
+	if (ret != -1)
+		return (0);
+	return (1);
 }
 
 int	main(int argc, char **argv)
 {
+	FILE	*file;
+
 	if (argc != 2)
 		return (send_error(ARG_ERR));
 	if (!(file = fopen(argv[1], "r")))
 		return (send_error(COR_ERR));
-	if (!fill_map())
+	if (!fill_map(file))
 		return (send_error(COR_ERR));
 	draw_map();
 	if (file)
