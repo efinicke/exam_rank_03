@@ -9,9 +9,10 @@
 
 
 char 	**map;
+FILE	*file;
 
-int		width;
-int		height;
+int	width;
+int	height;
 char	background;
 
 char	type;
@@ -23,7 +24,7 @@ char	foreground;
 int	ft_strlen(char *str)
 {
 	int i;
-	
+
 	i = 0;
 	if (!str)
 		return (0);
@@ -32,48 +33,55 @@ int	ft_strlen(char *str)
 	return (i);
 }
 
-int	send_error(char *str)
+void	free_map()
 {
 	int i;
 
 	i = 0;
-	write(1, str, ft_strlen(str));
-	while (map && map[i] && i < height)
-	{
-		free(map[i]);
-		i++;
-	}
 	if (map)
+	{
+		while (i < height)
+		{
+			free(map[i]);
+			i++;
+		}
 		free(map);
+	}
+}
+
+int	send_error(char *str)
+{
+	write(1, str, ft_strlen(str));
+	free_map();
 	return (1);
 }
 
 int	is_background_OK(void)
 {
 	if (width <= 0 || height <= 0 
-		|| width > 300 || height > 300)
+			|| width > 300 || height > 300)
 		return (0);
 	return (1);
 }
 
-int		fill_background(void)
+int	fill_background(void)
 {
-		int y;
+	int y;
 
-		y = 0;
-        map = calloc(height, sizeof(char *));
-        if (!map)
-                return (0);
-        while (y < height)
-        {
-                map[y] = calloc(width + 1, 1);
-                memset(map[y], background, width);
-                y++;
-        }
-        return (1);
+	y = 0;
+	map = calloc(height, sizeof(char *));
+	if (!map)
+		return (0);
+	while (y < height)
+	{
+		map[y] = calloc(width + 1, 1);
+		memset(map[y], background, width);
+		y++;
+	}
+	return (1);
 }
 
-int		is_foreground_OK(void)
+int	is_foreground_OK(void)
 {
 	if (type != 'c' && type != 'C')
 		return (0);
@@ -97,7 +105,6 @@ int	calcul(int x, int y)
 	}
 	return (0);
 }
-
 
 int	fill_foreground(void)
 {
@@ -128,13 +135,12 @@ void	draw_map(void)
 	{
 		write(1, map[i], ft_strlen(map[i]));
 		write(1, "\n", 1);
-		free(map[i]);
 		i++;
 	}
-	free(map);
+	free_map();
 }
 
-int	fill_map(FILE *file)
+int	fill_map()
 {
 	int ret;
 
@@ -145,7 +151,7 @@ int	fill_map(FILE *file)
 		return (0);
 	fill_background();
 	ret = fscanf(file, "%c %f %f %f %c\n", &type, &x_center, &y_center, &radius, &foreground);
-	while ((ret == 5))
+	while (ret == 5)
 	{
 		if (!is_foreground_OK())
 			return (0);
@@ -159,13 +165,11 @@ int	fill_map(FILE *file)
 
 int	main(int argc, char **argv)
 {
-	FILE	*file;
-
 	if (argc != 2)
 		return (send_error(ARG_ERR));
 	if (!(file = fopen(argv[1], "r")))
 		return (send_error(COR_ERR));
-	if (!fill_map(file))
+	if (!fill_map())
 		return (send_error(COR_ERR));
 	draw_map();
 	if (file)
