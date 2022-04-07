@@ -33,7 +33,7 @@ int	ft_strlen(char *str)
 	return (i);
 }
 
-void	free_map()
+void	clean_exit()
 {
 	int i;
 
@@ -47,12 +47,14 @@ void	free_map()
 		}
 		free(map);
 	}
+	if (file)
+		fclose(file);
 }
 
 int	send_error(char *str)
 {
 	write(1, str, ft_strlen(str));
-	free_map();
+	clean_exit();
 	return (1);
 }
 
@@ -137,7 +139,6 @@ void	draw_map(void)
 		write(1, "\n", 1);
 		i++;
 	}
-	free_map();
 }
 
 int	fill_map()
@@ -172,7 +173,6 @@ int	main(int argc, char **argv)
 	if (!fill_map())
 		return (send_error(COR_ERR));
 	draw_map();
-	if (file)
-		fclose(file);
+	clean_exit();
 	return (0);
 }
